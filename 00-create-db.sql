@@ -1,3 +1,3 @@
-create database vslive2025_redmond
+create database vslive2025_sandiego
 go
 
