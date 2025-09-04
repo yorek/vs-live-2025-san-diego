@@ -28,19 +28,23 @@ if (string.IsNullOrWhiteSpace(sqlConnectionString))
     throw new InvalidOperationException("The MSSQL_CONNECTION_STRING environment variable is not set.");
 }
 
+// Create the Azure OpenAI client
 var openAIClient = azureOpenAIApiKey switch
 {
     null or "" => new AzureOpenAIClient(azureOpenAIEndpoint, new DefaultAzureCredential()),
     _ => new AzureOpenAIClient(azureOpenAIEndpoint, new AzureKeyCredential(azureOpenAIApiKey))
 };
 
+// Create the embedding generator
 var embeddingGenerator = openAIClient.GetEmbeddingClient(embeddingModelDeploymentName).AsIEmbeddingGenerator();
 
+// Create the vector store
 Console.WriteLine("Connecting to the database vector store...");
 var vectorStore = new SqlServerVectorStore(sqlConnectionString, new SqlServerVectorStoreOptions() { EmbeddingGenerator = embeddingGenerator });
 var collection = vectorStore.GetCollection<int, CodeSample>("dbo.CodeSamples");
 await collection.EnsureCollectionExistsAsync();
 
+// Populate the vector store with code samples and their embeddings
 Console.WriteLine("Populating vector store...");
 var codeSamples = CodeSample.GetCodeSamples();
 var tasks = codeSamples.Select(item => Task.Run(async () =>
@@ -51,9 +55,10 @@ var tasks = codeSamples.Select(item => Task.Run(async () =>
 await Task.WhenAll(tasks);
 await collection.UpsertAsync(codeSamples);
 
+// Search the vector store
 Console.WriteLine("Searching vector store...");
-var question = "Question: What is the repo that contains the samples used at VS Live at Microsoft Headquarters?";
-Console.WriteLine(question);
+var question = "What is the repo that contains the samples used at VS Live at Microsoft Headquarters?";
+Console.WriteLine("Question: " + question);
 var searchResult = collection.SearchAsync(
     question,    
     top: 3,
@@ -65,7 +70,7 @@ var searchResult = collection.SearchAsync(
 // Output the matching result.
 await foreach (var result in searchResult)
 {
-    if (result.Score < 0.5)
+    if (result.Score < 0.5) // for now it needs to be done on the client side
     {
         Console.WriteLine($"Id: {result.Record.Id}, Title: {result.Record.Title}, Score: {result.Score}");
     }

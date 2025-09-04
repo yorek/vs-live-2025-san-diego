@@ -1,4 +1,4 @@
-# VS Live 2025 - Redmond HQ - AI Samples
+# VS Live 2025 - San Diego - AI Samples
 
 ## Demo 1 - Vectors and Vector Index
 
@@ -24,6 +24,6 @@ Use [azure-sql-nl2sql](https://github.com/Azure-Samples/azure-sql-nl2sql) repo. 
 
 Use the following question as an example
 
-```
+```text
 Hi, can you help me figure out what is our best selling product in each market we operate, and what would be a cross selling opportunity with another product? 
 ```
