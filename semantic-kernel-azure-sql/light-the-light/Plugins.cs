@@ -18,14 +18,14 @@ public class LightsPlugin
       On = 1
    }
 
-   [KernelFunction("get_lights")]
+   [KernelFunction()]
    [Description("Gets a list of lights and their current state")]
    public List<Light> GetLights()
    {
       return lights;
    }
 
-   [KernelFunction("change_state")]
+   [KernelFunction()]
    [Description("Changes the state of the light")]
    public Light? ChangeState(int id, LightState newState)
    {
@@ -42,7 +42,7 @@ public class LightsPlugin
       return light;
    }
 
-   [KernelFunction("add_light")]
+   [KernelFunction()]
    [Description("Add a new light to the list of available lights")]
    public Light? AddLight(string name, LightState newState)
    {
@@ -57,7 +57,7 @@ public class LightsPlugin
       return newLight;
    }
 
-   [KernelFunction("remove_light")]
+   [KernelFunction()]
    [Description("Remove a light from the list of available lights")]
    public bool RemoveLight(int id)
    {

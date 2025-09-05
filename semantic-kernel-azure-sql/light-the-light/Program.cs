@@ -15,6 +15,9 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Azure.Monitor.OpenTelemetry.Exporter;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.FileProviders;
+using VSLive.Samples.LightTheLight;
 
 // Load .env
 Env.Load();
@@ -83,11 +86,16 @@ Kernel kernel = builder.Build();
 // Get the services
 var chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
 
-// Add a plugin (the LightsPlugin class is defined below)
-kernel.Plugins.AddFromType<LightsPlugin>("Lights");
+// Welcome message
+Console.WriteLine("💡 Light the Light ");
+Console.WriteLine("🤖 I'm here to help you control your lights!");
+
+// Add the lights plugin 
+var lightsPlugin = new LightsPlugin();
+kernel.Plugins.AddFromObject(lightsPlugin);
 
 // List the available plugins
-Console.WriteLine("Available functions:");
+Console.WriteLine("🤖 Functions (or tools) I can use:");
 foreach (var plugin in kernel.Plugins)
 {
     foreach (var function in plugin)
@@ -102,6 +110,10 @@ OpenAIPromptExecutionSettings openAIPromptExecutionSettings = new()
     FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
 };
 
+// Start the web socket server
+WebSocketServer webSocketServer = new(lightsPlugin);
+Task webSocketServerTask = webSocketServer.StartAsync("http://localhost:5000");
+
 // Create a history store the conversation
 var history = new ChatHistory();
 
@@ -114,8 +126,15 @@ If the user ask for something that is not related to lights, respond that you ar
 string? userInput;
 do
 {
+    // Check if cancellation was requested
+    if (webSocketServer.IsCancellationRequested)
+    {
+        Console.WriteLine("🛑 Shutting down due to cancellation request...");
+        break;
+    }
+
     // Collect user input
-    Console.Write("User > ");
+    Console.Write("👤 > ");
     userInput = Console.ReadLine();
     
     if (userInput is "/exit" or "/quit")
@@ -149,7 +168,7 @@ do
         history.AddUserMessage(userInput);
 
         // Get the streaming response from the AI
-        Console.WriteLine("(🤔...thinking...)");
+        Console.Write("🤔 thinking...");
         string fullResponse = string.Empty;
         bool responseStarted = false;
         await foreach (var streamingResult in chatCompletionService.GetStreamingChatMessageContentsAsync(
@@ -157,17 +176,32 @@ do
             executionSettings: openAIPromptExecutionSettings,
             kernel: kernel))
         {
-            if (!responseStarted)
+            if (!string.IsNullOrEmpty(streamingResult.Content))
             {
-                Console.Write("Assistant > ");
-                responseStarted = true;
+                if (!responseStarted)
+                {
+                    Console.WriteLine();
+                    Console.Write("🤖 > ");
+                    responseStarted = true;
+                }
             }
+            else
+            {
+                Console.Write(".");
+            }
+
             Console.Write(streamingResult.Content);
-            fullResponse += streamingResult.Content;           
+            fullResponse += streamingResult.Content;
         }
-        Console.WriteLine(); 
+        Console.WriteLine();
 
         // Add the complete message from the agent to the chat history
         history.AddAssistantMessage(fullResponse);
+
+        // Notify the web app about the light state change
+        await webSocketServer.BroadcastLightUpdateAsync();
     }
-} while (userInput is not null);
+} while (userInput is not null && !webSocketServer.IsCancellationRequested);
+
+// Stop the web server
+await webSocketServer.StopAsync();
