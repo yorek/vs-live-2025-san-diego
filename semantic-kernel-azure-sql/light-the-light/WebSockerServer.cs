@@ -1,23 +1,4 @@
-// Import packages
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.ChatCompletion;
-using Microsoft.SemanticKernel.Connectors.OpenAI;
-using Azure.Identity;
-using Azure.AI.OpenAI;
-using Azure;
-using DotNetEnv;
-using System.Text.Json;
-using OpenTelemetry;
-using OpenTelemetry.Logs;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
-using Azure.Monitor.OpenTelemetry.Exporter;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.FileProviders;
-using Microsoft.Extensions.Hosting;
 using VSLive.Samples.LightTheLight;
 
 public class WebSocketServer
@@ -112,10 +93,8 @@ public class WebSocketServer
             try
             {
                 Console.WriteLine("🌐 Web server started at " + url);
-                Console.WriteLine("🔌 WebSocket endpoint available at " + url.Replace("http", "ws") + "/ws");
-                Console.WriteLine("💻 Open " + url + " in your browser to monitor and control the lights via web interface");
-                Console.WriteLine("💡 Press Ctrl+C to exit");
-                Console.WriteLine();
+                //Console.WriteLine("🔌 WebSocket endpoint available at " + url.Replace("http", "ws") + "/ws");
+                //Console.WriteLine("💻 Open " + url + " in your browser to monitor and control the lights via web interface");
 
                 await webApp.RunAsync(url);
             }

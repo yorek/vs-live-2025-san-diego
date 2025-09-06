@@ -1,6 +1,4 @@
 ﻿// Import packages
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
@@ -9,60 +7,27 @@ using Azure.AI.OpenAI;
 using Azure;
 using DotNetEnv;
 using System.Text.Json;
-using OpenTelemetry;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using Azure.Monitor.OpenTelemetry.Exporter;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.FileProviders;
-using VSLive.Samples.LightTheLight;
+
+// Welcome message
+Console.WriteLine("💡 Light the Light ");
+Console.WriteLine("🤖 I'm here to help you control your lights!");
 
 // Load .env
 Env.Load();
 
-// Populate values from your OpenAI deployment
 var deploymentName = Env.GetString("AZURE_OPENAI_CHAT_DEPLOYMENT_NAME") ?? string.Empty;
 var endpoint = Env.GetString("AZURE_OPENAI_ENDPOINT") ?? string.Empty;
 var apiKey = Env.GetString("AZURE_OPENAI_KEY") ?? string.Empty;
 var applicationInsightsConnectionString = Env.GetString("APPLICATION_INSIGHTS_CONNECTION_STRING") ?? string.Empty;
 
-// Replace the connection string with your Application Insights connection string
-var connectionString = applicationInsightsConnectionString;
-
-var resourceBuilder = ResourceBuilder
-    .CreateDefault()
-    .AddService("TelemetryApplicationInsightsQuickstart");
-
-// Enable model diagnostics with sensitive data.
-AppContext.SetSwitch("Microsoft.SemanticKernel.Experimental.GenAI.EnableOTelDiagnosticsSensitive", true);
-
-using var traceProvider = Sdk.CreateTracerProviderBuilder()
-    .SetResourceBuilder(resourceBuilder)
-    .AddSource("Microsoft.SemanticKernel*")
-    .AddAzureMonitorTraceExporter(options => options.ConnectionString = connectionString)
-    .Build();
-
-using var meterProvider = Sdk.CreateMeterProviderBuilder()
-    .SetResourceBuilder(resourceBuilder)
-    .AddMeter("Microsoft.SemanticKernel*")
-    .AddAzureMonitorMetricExporter(options => options.ConnectionString = connectionString)
-    .Build();
-
-using var loggerFactory = LoggerFactory.Create(builder =>
+if (new string[] { deploymentName, endpoint }.Contains(string.Empty))
 {
-    // Add OpenTelemetry as a logging provider
-    builder.AddOpenTelemetry(options =>
-    {
-        options.SetResourceBuilder(resourceBuilder);
-        options.AddAzureMonitorLogExporter(options => options.ConnectionString = connectionString);
-        // Format log messages. This is default to false.
-        options.IncludeFormattedMessage = true;
-        options.IncludeScopes = true;
-    });
-    builder.SetMinimumLevel(LogLevel.Information);
-});
+    Console.WriteLine("⚠️ Missing required environment variables. Please check your .env file.");
+    return;
+}
 
 // Create a kernel with Azure OpenAI chat completion
 var builder = Kernel.CreateBuilder();
@@ -77,18 +42,22 @@ AzureOpenAIClient azureClient = apiKey switch
 // Add Azure OpenAI chat completion
 builder.AddAzureOpenAIChatCompletion(deploymentName, azureClient);
 
-// Add enterprise components
-builder.Services.AddSingleton(loggerFactory);
+// Enable Application Insights telemetry
+if (!string.IsNullOrEmpty(applicationInsightsConnectionString))
+{
+    var loggerFactory = ApplicationInsightsTelemetry.Configure(applicationInsightsConnectionString);
+    builder.Services.AddSingleton(loggerFactory);
+}   
+else
+{
+    Console.WriteLine("⚠️  Application Insights connection string is not set. Telemetry is disabled.");
+}
 
 // Build the kernel
 Kernel kernel = builder.Build();
 
 // Get the services
 var chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
-
-// Welcome message
-Console.WriteLine("💡 Light the Light ");
-Console.WriteLine("🤖 I'm here to help you control your lights!");
 
 // Add the lights plugin 
 var lightsPlugin = new LightsPlugin();
@@ -98,10 +67,7 @@ kernel.Plugins.AddFromObject(lightsPlugin);
 Console.WriteLine("🤖 Functions (or tools) I can use:");
 foreach (var plugin in kernel.Plugins)
 {
-    foreach (var function in plugin)
-    {
-        Console.WriteLine($"\t{plugin.Name}.{function.Name}");
-    }
+    Console.WriteLine($"\t{plugin.Name}: " + string.Join(", ", plugin.Select(f => f.Name)));
 }
 
 // Enable planning
@@ -124,6 +90,7 @@ If the user ask for something that is not related to lights, respond that you ar
 
 // Initiate a back-and-forth chat
 string? userInput;
+Console.WriteLine("🚀 Ready! Type your message below (or /exit to quit, /history to see the chat history):");
 do
 {
     // Check if cancellation was requested
