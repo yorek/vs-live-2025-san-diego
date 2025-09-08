@@ -10,6 +10,8 @@ using System.Text.Json;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
+using Microsoft.Extensions.Logging;
+using System.Text.RegularExpressions;
 
 // Welcome message
 Console.WriteLine("💡 Light the Light ");
@@ -29,6 +31,9 @@ if (new string[] { deploymentName, endpoint }.Contains(string.Empty))
     return;
 }
 
+// Where log is sent to console or not
+var logToConsole = false;
+
 // Create a kernel with Azure OpenAI chat completion
 var builder = Kernel.CreateBuilder();
 
@@ -47,10 +52,20 @@ if (!string.IsNullOrEmpty(applicationInsightsConnectionString))
 {
     var loggerFactory = ApplicationInsightsTelemetry.Configure(applicationInsightsConnectionString);
     builder.Services.AddSingleton(loggerFactory);
-}   
+}
 else
 {
     Console.WriteLine("⚠️  Application Insights connection string is not set. Telemetry is disabled.");
+    builder.Services.AddLogging(services =>
+    {
+        // services.AddConsole(options =>
+        // {
+        //     options.LogToStandardErrorThreshold = LogLevel.None; // Prevent duplicate output
+        // });
+        services.AddProvider(new CustomSemanticKernelLoggerProvider());
+        services.SetMinimumLevel(LogLevel.Information);
+    });
+    logToConsole = true;
 }
 
 // Build the kernel
@@ -101,12 +116,17 @@ do
     }
 
     // Collect user input
-    Console.Write("👤 > ");
+    Console.Write("🧑 > ");
     userInput = Console.ReadLine();
     
     if (userInput is "/exit" or "/quit")
     {
         break;
+    }
+    
+    if (userInput is "/clear") {
+        Console.Clear();
+        continue;
     }
 
     if (userInput is "/history")
@@ -123,7 +143,7 @@ do
                 });
                 Console.WriteLine($"HISTORY> Metadata:");
                 Console.WriteLine(metadataJson);
-            }        
+            }
         }
 
         continue;
@@ -136,6 +156,7 @@ do
 
         // Get the streaming response from the AI
         Console.Write("🤔 thinking...");
+        if (logToConsole) Console.WriteLine();
         string fullResponse = string.Empty;
         bool responseStarted = false;
         await foreach (var streamingResult in chatCompletionService.GetStreamingChatMessageContentsAsync(
@@ -147,14 +168,14 @@ do
             {
                 if (!responseStarted)
                 {
-                    Console.WriteLine();
+                    if (!logToConsole) Console.WriteLine();
                     Console.Write("🤖 > ");
                     responseStarted = true;
                 }
             }
             else
             {
-                Console.Write(".");
+                if (!logToConsole) Console.Write(".");
             }
 
             Console.Write(streamingResult.Content);
