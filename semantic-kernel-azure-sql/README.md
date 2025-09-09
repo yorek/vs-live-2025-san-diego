@@ -4,6 +4,8 @@
 
 Introduction to Semantic Kernel and Function Calling.
 
+![Sample App](./_assets/light-the-light.gif)
+
 Folder: [light-the-light](./light-the-light)
 
 ## Demo 2 - Multi Agent
