@@ -18,7 +18,7 @@ public class CodeSample
     public required string Description { get; set; }
 
     [VectorStoreVector(Dimensions: 1536, DistanceFunction = DistanceFunction.CosineDistance)]
-    public string Embedding => this.Description;
+    public string Embedding => Title + ": " + Description;
 
     public static List<CodeSample> GetCodeSamples() => [
         new CodeSample
