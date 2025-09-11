@@ -40,24 +40,17 @@ var embeddingGenerator = openAIClient.GetEmbeddingClient(embeddingModelDeploymen
 
 // Create the vector store
 Console.WriteLine("Connecting to the database vector store...");
-var vectorStore = new SqlServerVectorStore(sqlConnectionString, new SqlServerVectorStoreOptions() { EmbeddingGenerator = embeddingGenerator });
-var collection = vectorStore.GetCollection<int, CodeSample>("dbo.CodeSamples");
+var vectorStore = new SqlServerVectorStore(sqlConnectionString, new SqlServerVectorStoreOptions() { EmbeddingGenerator = embeddingGenerator, Schema = "dbo" });
+var collection = vectorStore.GetCollection<int, CodeSample>("CodeSamples");
 await collection.EnsureCollectionExistsAsync();
 
 // Populate the vector store with code samples and their embeddings
 Console.WriteLine("Populating vector store...");
 var codeSamples = CodeSample.GetCodeSamples();
-var tasks = codeSamples.Select(item => Task.Run(async () =>
-{
-    item.Embedding = await embeddingGenerator.GenerateVectorAsync(item.Description);
-    Console.WriteLine($"Generated embedding for Id: {item.Id}, Title: {item.Title}");
-}));
-await Task.WhenAll(tasks);
 await collection.UpsertAsync(codeSamples);
 Console.WriteLine("Vector store populated.\n");
 
 // Search the vector store
-
 Console.WriteLine("Searching vector store...");
 var question = "What is the repo that contains the samples used at the conference held at Microsoft Headquarters?";
 Console.WriteLine("Question: " + question);
