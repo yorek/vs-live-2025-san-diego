@@ -54,10 +54,12 @@ var tasks = codeSamples.Select(item => Task.Run(async () =>
 }));
 await Task.WhenAll(tasks);
 await collection.UpsertAsync(codeSamples);
+Console.WriteLine("Vector store populated.\n");
 
 // Search the vector store
+
 Console.WriteLine("Searching vector store...");
-var question = "What is the repo that contains the samples used at VS Live at Microsoft Headquarters?";
+var question = "What is the repo that contains the samples used at the conference held at Microsoft Headquarters?";
 Console.WriteLine("Question: " + question);
 var searchResult = collection.SearchAsync(
     question,    
