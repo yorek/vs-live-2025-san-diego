@@ -47,6 +47,7 @@ await collection.EnsureCollectionExistsAsync();
 // Populate the vector store with code samples and their embeddings
 Console.WriteLine("Populating vector store...");
 var codeSamples = CodeSample.GetCodeSamples();
+codeSamples.ForEach(s => Console.WriteLine($"Id: {s.Id}, Title: {s.Title}"));
 await collection.UpsertAsync(codeSamples);
 Console.WriteLine("Vector store populated.\n");
 
